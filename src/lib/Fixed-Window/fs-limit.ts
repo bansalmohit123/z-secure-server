@@ -35,18 +35,11 @@ const fixedWindow = (
 	passedOptions?: Partial<Options>
 ): RateLimitRequestHandler => {
 	console.log('fixedWindow!!!')
-	// Parse the options and add the default values for unspecified options
 	const config = parseOptions(passedOptions ?? {})
 	const options = getOptionsFromConfig(config)
 
 	console.log(options)
 
-	// The limiter shouldn't be created in response to a request (usually)
-	// config.validations.creationStack(config.store)
-	// The store instance shouldn't be shared across multiple limiters
-	// config.validations.unsharedStore(config.store)
-
-	// Call the `init` method on the store, if it exists
 	if (typeof config.store.init === 'function') config.store.init(options)
 
 	// Then return the actual middleware
