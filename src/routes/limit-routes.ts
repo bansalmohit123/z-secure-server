@@ -31,7 +31,7 @@ import prisma from '../config/db.config'; // Assuming you have prisma client set
 const router = Router();
 
 // GET endpoint for storing algorithm configuration in Redis and PostgreSQL
-router.get('/fwi', async (req: Request, res: Response): Promise<Response> => {
+router.get('/fwi', async (req: Request, res: Response): Promise<void> => {
     const { API_KEY, algoConfig, userId, identificationKey } = req.body;
 
     // Check if API key is valid by querying Postgres via Prisma
