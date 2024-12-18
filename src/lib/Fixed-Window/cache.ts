@@ -1,11 +1,19 @@
-import scripts from '../fixed-window/scripts';
-import { Store } from '../types';
+// import scripts from '../fixed-window/scripts';
 import Redis, { Redis as RedisClient } from 'ioredis';
 
 interface RedisStoreOptions {
   client: RedisClient;
   prefix?: string;
 }
+
+type Store = {
+    get: (key: string) => Promise<number | null>;
+    increment: (key: string) => Promise<number>;
+    setExpiry: (key: string, ttlMs: number) => Promise<void>;
+    delete: (key: string) => Promise<void>;
+    resetAll: () => Promise<void>;
+    shutdown: () => Promise<void>;
+    };
 
 export default class RedisStore implements Store {
   public client: RedisClient;

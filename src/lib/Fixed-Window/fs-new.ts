@@ -11,26 +11,27 @@
 // if totalHits > limit, return rate limit exceeded.
 // else increment totalHits and return rate limit not exceeded.
 
-import redisStore from 'cache.ts';
+import RedisStore from "./cache";
 
 interface FixedWindow {
   user_ID: string;
   limit: number;
   windowMs: number;
   API_KEY: string;
+  store : RedisStore;
 }
 
-async function fixedWindow({ user_ID, limit, windowMs, API_KEY }: FixedWindow): Promise<boolean> {
+async function fixedWindow({ user_ID, limit, windowMs, API_KEY, store }: FixedWindow): Promise<boolean> {
   try {
     const redisKey = `${API_KEY}.${user_ID}`;
     const ttl = Math.ceil(windowMs / 1000); // TTL in seconds
 
     // Increment the counter atomically and get the new value
-    const currentHits = await redisStore.increment(redisKey);
+    const currentHits = await store.increment(redisKey);
 
     if (currentHits === 1) {
       // Set expiration only when key is first created
-      await redisStore.expire(redisKey, ttl);
+      await store.setExpiry(redisKey, ttl);
     }
 
     if (currentHits > limit) {
@@ -44,3 +45,5 @@ async function fixedWindow({ user_ID, limit, windowMs, API_KEY }: FixedWindow): 
     return true;
   }
 }
+
+export default fixedWindow;
