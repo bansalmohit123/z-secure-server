@@ -24,20 +24,28 @@ interface FixedWindow {
 async function fixedWindow({ user_ID, limit, windowMs, API_KEY, store }: FixedWindow): Promise<boolean> {
   try {
     const redisKey = `${API_KEY}.${user_ID}`;
-    const ttl = Math.ceil(windowMs / 1000); // TTL in seconds
+    const ttl = Math.ceil(windowMs); // TTL in seconds
+
+    console.log('Fixed window rate limiting:', { redisKey, ttl });
+    const beforeHits = await store.get(redisKey);
+    console.log('Before hits:', beforeHits);
 
     // Increment the counter atomically and get the new value
     const currentHits = await store.increment(redisKey);
+    console.log('Current hits:', currentHits);
 
     if (currentHits === 1) {
       // Set expiration only when key is first created
       await store.setExpiry(redisKey, ttl);
+      console.log('Set expiry for key:', redisKey, 'with TTL:', ttl);
     }
 
     if (currentHits > limit) {
+      console.log('Rate limit exceeded for key:', redisKey);
       return false; // Rate limit exceeded
     }
 
+    console.log('Rate limit not exceeded for key:', redisKey);
     return true; // Rate limit not exceeded
   } catch (error) {
     console.error('Error in fixedWindow:', error);

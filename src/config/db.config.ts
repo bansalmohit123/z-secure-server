@@ -6,7 +6,7 @@ const prisma = new PrismaClient({
 
 export default prisma;
 prisma.$connect()
-  .then(() => {
+  .then(async () => {
     console.log("Prisma connected successfully");
   })
   .catch((error: any) => {

@@ -9,26 +9,15 @@ datasource db {
 
 
 model User {
-  id             String   @id @default(cuid())
+  id             Int   @id @default(autoincrement())
   email          String   @unique
-  name           String
+  name           String @db.VarChar(191)
   apiKeys        ApiKey[]
-  algorithmConfigs AlgorithmConfig[]
 }
 
 model ApiKey {
-  id        String   @id @default(cuid())
+  id        Int   @id @default(autoincrement())
   key       String   @unique
-  userId    String
+  userId    Int
   user      User     @relation(fields: [userId], references: [id])
-}
-
-model AlgorithmConfig {
-  id               String   @id @default(cuid())
-  userId           String
-  user             User     @relation(fields: [userId], references: [id])
-  identificationKey String   @unique
-  algoConfig       Json     // Store the configuration as JSON (e.g., token bucket, sliding window, etc.)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
 }

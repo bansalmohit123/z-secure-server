@@ -1,15 +1,13 @@
 {
   "compilerOptions": {
-    "target": "ES2022",                 // JavaScript version
-    "module": "ESNext",                 // Use ES Modules
-    "rootDir": "./src",                 // Source files location
-    "outDir": "./dist",                 // Compiled files output directory
-    "strict": true,                     // Enable strict mode            // Skip type checking of libraries
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
+    "rootDirs": ["src"],
+    "outDir": "dist",
+    "lib": ["es2020"],
+    "target": "es2020",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "types": ["node"]
   },
-  "include": ["src"],                   // Include the 'src' folder
-  "exclude": ["node_modules", "dist"]   // Exclude folders
+  "include": ["src"]
 }
