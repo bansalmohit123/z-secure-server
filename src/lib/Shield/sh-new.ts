@@ -55,6 +55,9 @@ export function detectMaliciousRequest(
 
   // Check enabled attack detection options
   console.log(req.body)
+    console.log(req.query)
+    console.log(req.params)
+  console.log("+++++++++++")
   if (isAttackDetected({ ...req.query, ...req.body, ...req.params }, detectXSSPatterns)) {
       attackTypes.push("XSS");
   }

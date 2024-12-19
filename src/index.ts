@@ -4,9 +4,9 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { ProtectionHandler } from './handlers/protection-handler';
 import './config/redis';
-import './config/tb-redis';
+
 import './config/redis-store';
-import './config/lb-redis';
+
 
 const app : Application = express(); 
 const port = process.env.PORT || 3000;
@@ -19,6 +19,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.post("/protection", ProtectionHandler);
+
+
 
 
 app.get('/', (req: Request, res: Response) => {

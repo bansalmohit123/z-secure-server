@@ -1,4 +1,4 @@
-import FWRedisStore from "./cache";
+import LeakyBucketRedisStore from "./cache";
 
 interface LeakyBucketWithRefill {
   user_ID: string;
@@ -7,7 +7,7 @@ interface LeakyBucketWithRefill {
   refillIntervalMs: number; // Refill interval in milliseconds
   API_KEY: string; // API Key for the user
   identificationKey: string; // Identification key for the user
-  store: FWRedisStore; // Redis store instance
+  store: LeakyBucketRedisStore; // Redis store instance
 }
 
 async function leakyBucket({
@@ -20,14 +20,18 @@ async function leakyBucket({
   store,
 }: LeakyBucketWithRefill): Promise<boolean> {
   try {
+    
+    //console.log('Leaky bucket rate limiting with refill:', { API_KEY, capacity, refillRate, refillIntervalMs, user_ID, identificationKey });
+
     const redisKey = `${API_KEY}.${identificationKey}.${user_ID}`;
     
-    console.log('Leaky bucket rate limiting with refill:', { redisKey });
+    // console.log('Leaky bucket rate limiting with refill:', { redisKey });
 
     // Fetch current state (remaining tokens and last refill time) from Redis
     const data = await store.get(redisKey);
-    const { remainingTokens = capacity, lastRefillTime = Date.now() } = typeof data === 'object' && data !== null ? data : {};
-
+    console.log('Fetched data from Redis:', data);
+    const remainingTokens = Number.isNaN(data.tokens) ? capacity : data?.tokens;
+    const lastRefillTime = data?.lastRefill ?? Date.now();
     // Calculate how many tokens to refill based on the time passed since the last refill
     const timeElapsed = Date.now() - lastRefillTime;
     const refillTokens = Math.floor(timeElapsed / refillIntervalMs) * refillRate;
@@ -57,8 +61,8 @@ async function leakyBucket({
     console.log('Request allowed. Remaining tokens:', newRemainingTokens - 1);
 
     // Set TTL to keep the state in Redis fresh, if needed
-    await store.setExpiry(redisKey, Math.ceil(refillIntervalMs / 1000)); // Set TTL to the refill interval time
-    console.log('Set expiry for key:', redisKey);
+    // await store.setExpiry(redisKey, Math.ceil(refillIntervalMs / 1000)); // Set TTL to the refill interval time
+    // console.log('Set expiry for key:', redisKey);
 
     return true; // Request allowed
   } catch (error) {
