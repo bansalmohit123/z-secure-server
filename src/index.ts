@@ -5,9 +5,11 @@ import { createServer } from 'http';
 import { storeAlgoConfigHandler, limitRouteHandler } from './handlers/fw-handlers';
 import {tbstoreAlgoConfigHandler, tblimitRouteHandler} from './handlers/tb-handlers';
 import {shstoreAlgoConfigHandler, shlimitRouteHandler} from './handlers/sh-handlers';
+import {lbstoreAlgoConfigHandler, lblimitRouteHandler} from './handlers/lb-handlers';
 import './config/redis';
 import './config/tb-redis';
 import './config/sh-redis';
+import './config/lb-redis';
 
 const app : Application = express(); 
 const port = process.env.PORT || 3000;
@@ -28,7 +30,8 @@ app.post('/tb', tblimitRouteHandler);
 app.post('/shi', shstoreAlgoConfigHandler);
 app.post('/sh', shlimitRouteHandler);
 
-
+app.post('/lbi', lbstoreAlgoConfigHandler);
+app.post('/lb', lblimitRouteHandler);
 
 
 app.get('/', (req: Request, res: Response) => {

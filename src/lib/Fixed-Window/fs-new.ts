@@ -11,14 +11,14 @@
 // if totalHits > limit, return rate limit exceeded.
 // else increment totalHits and return rate limit not exceeded.
 
-import RedisStore from "./cache";
+import FWRedisStore from "./cache";
 
 interface FixedWindow {
   user_ID: string;
   limit: number;
   windowMs: number;
   API_KEY: string;
-  store : RedisStore;
+  store : FWRedisStore;
 }
 
 async function fixedWindow({ user_ID, limit, windowMs, API_KEY, store }: FixedWindow): Promise<boolean> {
