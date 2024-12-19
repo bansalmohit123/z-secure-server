@@ -19,11 +19,12 @@ interface FixedWindow {
   windowMs: number;
   API_KEY: string;
   store : FWRedisStore;
+  identificationKey: string;
 }
 
-async function fixedWindow({ user_ID, limit, windowMs, API_KEY, store }: FixedWindow): Promise<boolean> {
+async function fixedWindow({ user_ID, limit, windowMs, API_KEY, store, identificationKey }: FixedWindow): Promise<boolean> {
   try {
-    const redisKey = `${API_KEY}.${user_ID}`;
+    const redisKey = `${API_KEY}.${identificationKey}.${user_ID}`;
     const ttl = Math.ceil(windowMs); // TTL in seconds
 
     console.log('Fixed window rate limiting:', { redisKey, ttl });

@@ -6,6 +6,7 @@ interface LeakyBucketWithRefill {
   refillRate: number; // Tokens added per second
   refillIntervalMs: number; // Refill interval in milliseconds
   API_KEY: string; // API Key for the user
+  identificationKey: string; // Identification key for the user
   store: FWRedisStore; // Redis store instance
 }
 
@@ -15,10 +16,11 @@ async function leakyBucket({
   refillRate,
   refillIntervalMs,
   API_KEY,
+  identificationKey,
   store,
 }: LeakyBucketWithRefill): Promise<boolean> {
   try {
-    const redisKey = `${API_KEY}.${user_ID}`;
+    const redisKey = `${API_KEY}.${identificationKey}.${user_ID}`;
     
     console.log('Leaky bucket rate limiting with refill:', { redisKey });
 

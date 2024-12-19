@@ -2,25 +2,26 @@ import RedisStore from "./cache";
 
 interface TokenBucket {
   user_ID: string;
-  limit: number; // Maximum capacity of tokens in the bucket
+  capacity: number; // Maximum capacity of tokens in the bucket
   refillRate: number; // Number of tokens added per second
   API_KEY: string;
   store: RedisStore;
+  identificationKey: string;
 }
 
-async function tokenBucket({ user_ID, limit, refillRate, API_KEY, store }: TokenBucket): Promise<boolean> {
+async function tokenBucket({ user_ID, capacity, refillRate, API_KEY, store, identificationKey }: TokenBucket): Promise<boolean> {
   try {
-    const redisKey = `${API_KEY}.${user_ID}`;
+    const redisKey = `${API_KEY}.${identificationKey}.${user_ID}`;
     const now = Date.now();
 
     // Get the current state of the bucket
-    const currentTokens = (await store.get(redisKey)) || limit; // Initialize with full bucket if not found
+    const currentTokens = (await store.get(redisKey)) || capacity; // Initialize with full bucket if not found
     const lastRefillTimeKey = `${redisKey}.lastRefill`;
     const lastRefillTime = (await store.get(lastRefillTimeKey)) || now;
 
     // Calculate elapsed time since the last refill
     const elapsedMs = now - lastRefillTime;
-    const newTokens = Math.min(limit, currentTokens + Math.floor((elapsedMs / 1000) * refillRate));
+    const newTokens = Math.min(capacity, currentTokens + Math.floor((elapsedMs / 1000) * refillRate));
 
     if (newTokens <= 0) {
       // If no tokens are available, reject the request

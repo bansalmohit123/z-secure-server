@@ -2,13 +2,10 @@ import express, {Application, Request, Response} from 'express';
 import "dotenv/config";
 import cors from 'cors';
 import { createServer } from 'http';
-import { storeAlgoConfigHandler, limitRouteHandler } from './handlers/fw-handlers';
-import {tbstoreAlgoConfigHandler, tblimitRouteHandler} from './handlers/tb-handlers';
-import {shstoreAlgoConfigHandler, shlimitRouteHandler} from './handlers/sh-handlers';
-import {lbstoreAlgoConfigHandler, lblimitRouteHandler} from './handlers/lb-handlers';
+import { ProtectionHandler } from './handlers/protection-handler';
 import './config/redis';
 import './config/tb-redis';
-import './config/sh-redis';
+import './config/redis-store';
 import './config/lb-redis';
 
 const app : Application = express(); 
@@ -21,17 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.post('/fwi', storeAlgoConfigHandler);
-app.post('/fw', limitRouteHandler);
-
-app.post('/tbi', tbstoreAlgoConfigHandler);
-app.post('/tb', tblimitRouteHandler);
-
-app.post('/shi', shstoreAlgoConfigHandler);
-app.post('/sh', shlimitRouteHandler);
-
-app.post('/lbi', lbstoreAlgoConfigHandler);
-app.post('/lb', lblimitRouteHandler);
+app.post("/protection", ProtectionHandler);
 
 
 app.get('/', (req: Request, res: Response) => {

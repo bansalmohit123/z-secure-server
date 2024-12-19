@@ -12,6 +12,7 @@
 // else increment currentWindowHits and return rate limit not exceeded.
 
 import ShieldRedisStore from "./cache";
+import {detectSQLInjectionPatterns, detectLfiPatterns, detectXSSPatterns} from "./patterns";
 
 interface ShieldWindow {
   user_ID: string;
@@ -19,73 +20,87 @@ interface ShieldWindow {
   windowMs: number;
   API_KEY: string;
   store: ShieldRedisStore;
+  req : any;
+  identificationKey: string;
 }
 
-async function shieldWindow({ user_ID, limit, windowMs, API_KEY, store }: ShieldWindow): Promise<boolean> {
-//   try {
-//     const currentTimestamp = Date.now();
-//     const redisKey = `${API_KEY}.${user_ID}`;
-//     const currentWindowStart = Math.floor(currentTimestamp / windowMs) * windowMs;
-//     const previousWindowStart = currentWindowStart - windowMs;
 
-//     console.log("Shield algorithm rate limiting with shield increment:", { redisKey });
-
-//     // Perform shield increment logic
-//     const currentKey = `${redisKey}:current`;
-//     const previousKey = `${redisKey}:previous`;
-//     const ttl = windowMs; // TTL for each key in milliseconds
-
-//     // Start a pipeline to atomically increment and fetch
-//     const pipeline = store.client.pipeline();
-//     pipeline.incr(currentKey);
-//     pipeline.pexpire(currentKey, ttl);
-//     pipeline.get(previousKey);
-//     const [currentHitsRaw, , previousHitsRaw] = await pipeline.exec();
-
-//     // Parse results
-//     const currentHits = parseInt(currentHitsRaw[1] as string, 10);
-//     const previousHits = previousHitsRaw[1] ? parseInt(previousHitsRaw[1] as string, 10) : 0;
-
-//     // Calculate overlap factor
-//     const overlapFactor = 1 - (currentTimestamp - currentWindowStart) / windowMs;
-
-//     // Calculate effective count
-//     const effectiveCount = currentHits + previousHits * overlapFactor;
-//     console.log("Effective count:", effectiveCount);
-
-//     // Decision based on limit
-//     if (effectiveCount > limit) {
-//       console.log("Rate limit exceeded for key:", redisKey);
-//       return false; // Rate limit exceeded
-//     }
-
-//     // Update previous key only when moving to the next window
-//     if (currentTimestamp >= currentWindowStart + windowMs) {
-//       await store.client.set(previousKey, currentHits.toString(), "PX", 2 * ttl); // Set expiry for previous key
-//       console.log("Updated previous window key:", previousKey);
-//     }
-
-//     console.log("Rate limit not exceeded for key:", redisKey);
-//     return true; // Rate limit not exceeded
-//   } catch (error) {
-//     console.error("Error in shieldWindow with shield increment:", error);
-//     // Fail-safe: accept the request on error to prevent false positives
-//     return true;
-//   }
-const key = `${API_KEY}.${user_ID}`;
-try {
-  const effectiveCount = await store.shieldIncrement(key, windowMs);
-  console.log("Effective Count:", effectiveCount);
-
-  if (effectiveCount > limit) {
-    console.log("Rate limit exceeded for key:", key);
-    return false; // Rate limit exceeded
+export function isAttackDetected(
+  input: object,
+  patterns: RegExp[]
+): boolean {
+  console.log("isAttackDetected")
+  console.log(input)
+  function scanValues(values: any[]): boolean {
+      return values.some(value => {
+          if (typeof value === 'string') {
+              return patterns.some(pattern => pattern.test(value));
+          } else if (typeof value === 'object' && value !== null) {
+              // Recursively check nested objects or arrays
+              return isAttackDetected(value, patterns);
+          } else {
+              return false;
+          }
+      });
   }
-  return true; // Rate limit not exceeded
+
+  return scanValues(Object.values(input));
+}
+
+
+export function detectMaliciousRequest(
+  req: any,
+): { isSuspicious: boolean; attackTypes: string[] } {
+  const attackTypes: string[] = [];
+
+  // Check enabled attack detection options
+  console.log(req.body)
+  if (isAttackDetected({ ...req.query, ...req.body, ...req.params }, detectXSSPatterns)) {
+      attackTypes.push("XSS");
+  }
+  if (isAttackDetected({ ...req.query, ...req.body, ...req.params }, detectSQLInjectionPatterns)) {
+      console.log("SQL Injection detected")
+      attackTypes.push("SQL Injection");
+  }
+  if (isAttackDetected({ ...req.query, ...req.body, ...req.params }, detectLfiPatterns)) {
+      attackTypes.push("LFI");
+  }
+
+  return {
+      isSuspicious: attackTypes.length > 0,
+      attackTypes,
+  };
+}
+
+
+
+async function Protect({ user_ID, windowMs, limit, req  , API_KEY, store, identificationKey }: ShieldWindow): Promise<boolean> {
+
+const key = `${API_KEY},${identificationKey}.${user_ID}`;
+try {
+  console.log("Shield window rate limiting:", { key });
+  const beforeHits = await store.get(key);
+  console.log("Before hits:", beforeHits);
+
+  const { isSuspicious, attackTypes } = detectMaliciousRequest({
+      body: req.body,
+      query: req.query,
+      params: req.params,
+  });
+  if (isSuspicious) {
+      console.log("Malicious request detected:", { attackTypes });
+      const currentHits = await store.increment(key);
+      if(currentHits > limit){
+        return false;
+      }
+      return true;
+  }
+  return true;
 } catch (error) {
   console.error("Error in shieldRateLimiter:", error);
   return true; // Fail-safe: Allow request on error
 }
 }
 
-export default shieldWindow;
+
+export default Protect;

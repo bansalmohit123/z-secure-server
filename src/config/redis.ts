@@ -8,14 +8,12 @@ try {
   if (process.env.NODE_ENV === "production") {
     console.log("Connecting to Redis at:", process.env.REDIS_URL);
     redis = new Redis(process.env.REDIS_URL as string);
-    FixedWindowRedis = new FWRedisStore({ client: redis, prefix: "fw:" });
   } else {
     console.log("Connecting to local Redis instance");
     redis = new Redis({
       host: "localhost",
       port: 6379,
     });
-    FixedWindowRedis = new FWRedisStore({ client: redis, prefix: "fw:" });
   }
 
   redis.on("error", (err) => {
@@ -30,4 +28,4 @@ try {
   console.error("Failed to initialize Redis:", error);
 }
 
-export { FixedWindowRedis, redis };
+export {redis };
