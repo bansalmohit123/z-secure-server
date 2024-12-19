@@ -16,7 +16,7 @@ type Store = {
     shutdown: () => Promise<void>;
     };
 
-    export default class RedisStore implements Store {
+    export default class FWRedisStore implements Store {
         public client: RedisClient;
         public prefix: string;
       
