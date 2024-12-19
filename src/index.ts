@@ -3,9 +3,11 @@ import "dotenv/config";
 import cors from 'cors';
 import { createServer } from 'http';
 import { storeAlgoConfigHandler, limitRouteHandler } from './handlers/fw-handlers';
+import {tbstoreAlgoConfigHandler, tblimitRouteHandler} from './handlers/tb-handlers';
+import {shstoreAlgoConfigHandler, shlimitRouteHandler} from './handlers/sh-handlers';
 import './config/redis';
-
-
+import './config/tb-redis';
+import './config/sh-redis';
 
 const app : Application = express(); 
 const port = process.env.PORT || 3000;
@@ -19,6 +21,15 @@ app.use(express.urlencoded({ extended: false }));
 
 app.post('/fwi', storeAlgoConfigHandler);
 app.post('/fw', limitRouteHandler);
+
+app.post('/tbi', tbstoreAlgoConfigHandler);
+app.post('/tb', tblimitRouteHandler);
+
+app.post('/shi', shstoreAlgoConfigHandler);
+app.post('/sh', shlimitRouteHandler);
+
+
+
 
 app.get('/', (req: Request, res: Response) => {
     res.json({ message: 'Hello, World!' });

@@ -1,21 +1,21 @@
 import { Redis } from "ioredis";
-import FWRedisStore from "../lib/Fixed-Window/cache";
+import RedisTokenBucketStore from "../lib/Token-Bucket/cache";
 let redis: Redis;
-let FixedWindowRedis: FWRedisStore;
+let TokenBucketRedis: RedisTokenBucketStore;
 console.log("Connecting to Redis at:", process.env.REDIS_URL);
 
 try {
   if (process.env.NODE_ENV === "production") {
     console.log("Connecting to Redis at:", process.env.REDIS_URL);
     redis = new Redis(process.env.REDIS_URL as string);
-    FixedWindowRedis = new FWRedisStore({ client: redis, prefix: "fw:" });
+    TokenBucketRedis = new RedisTokenBucketStore({ client: redis, prefix: "tb:" });
   } else {
     console.log("Connecting to local Redis instance");
     redis = new Redis({
       host: "localhost",
       port: 6379,
     });
-    FixedWindowRedis = new FWRedisStore({ client: redis, prefix: "fw:" });
+    TokenBucketRedis = new RedisTokenBucketStore({ client: redis, prefix: "tb:" });
   }
 
   redis.on("error", (err) => {
@@ -30,4 +30,4 @@ try {
   console.error("Failed to initialize Redis:", error);
 }
 
-export { FixedWindowRedis, redis };
+export { TokenBucketRedis, redis };

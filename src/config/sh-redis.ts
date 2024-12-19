@@ -1,21 +1,22 @@
 import { Redis } from "ioredis";
-import FWRedisStore from "../lib/Fixed-Window/cache";
+import shieldWindow from "../lib/Shield/cache";
+
 let redis: Redis;
-let FixedWindowRedis: FWRedisStore;
+let ShieldRedis: shieldWindow;
 console.log("Connecting to Redis at:", process.env.REDIS_URL);
 
 try {
   if (process.env.NODE_ENV === "production") {
     console.log("Connecting to Redis at:", process.env.REDIS_URL);
     redis = new Redis(process.env.REDIS_URL as string);
-    FixedWindowRedis = new FWRedisStore({ client: redis, prefix: "fw:" });
+    ShieldRedis = new shieldWindow({ client: redis, prefix: "sh:" });
   } else {
     console.log("Connecting to local Redis instance");
     redis = new Redis({
       host: "localhost",
       port: 6379,
     });
-    FixedWindowRedis = new FWRedisStore({ client: redis, prefix: "fw:" });
+    ShieldRedis = new shieldWindow({ client: redis, prefix: "sh:" });
   }
 
   redis.on("error", (err) => {
@@ -27,7 +28,7 @@ try {
   });
 
 } catch (error) {
-  console.error("Failed to initialize Redis:", error);
-}
+    console.error("Failed to initialize Redis:", error);
+    }
 
-export { FixedWindowRedis, redis };
+export { ShieldRedis, redis };
