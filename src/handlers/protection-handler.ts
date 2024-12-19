@@ -104,7 +104,7 @@ export const ProtectionHandler = async (
         //if not found then check in db
         //  if not found then return invalid api key
         let apiKey = await redis.get(`api_key:${key}`);
-        console.log('Fetched API key from Redis:', apiKey);
+        // console.log('Fetched API key from Redis:', apiKey);
 
         if (!apiKey) {
             const apiKeyFromDB = await prisma.apiKey.findUnique({
@@ -150,6 +150,7 @@ export const ProtectionHandler = async (
                 });
             } else if (algorithm === 'LeakyBucketRule') {
                 const { leakRate, capacity, timeout } = rules;
+                // console.log('LeakyBucketRule:', leakRate, capacity, timeout);
                 result = await leakyBucket({
                     user_ID: userId,
                     capacity,
@@ -167,6 +168,7 @@ export const ProtectionHandler = async (
         if(shield){
             const { rule, request } = shield;
             const { windowMs, limit, threshold } = rule;
+            console.log(request)
             shield_result = await Protect({
                 req : request,
                 user_ID: userId,

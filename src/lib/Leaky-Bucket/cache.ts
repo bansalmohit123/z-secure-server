@@ -13,7 +13,7 @@ interface LeakyBucketOptions {
 }
 
 type Store = {
-  get: (key: string) => Promise<number | null>;
+    get: (key: string) => Promise<{ tokens: number; lastRefill: number } | null>;
   set: (key: string, data: { tokens: number; lastRefill: number }) => Promise<void>;
   increment: (key: string) => Promise<number>;
   setExpiry: (key: string, ttlMs: number) => Promise<void>;
@@ -29,27 +29,41 @@ export default class LeakyBucketRedisStore implements Store {
 
   constructor(options: RedisStoreOptions) {
     this.client = options.client;
-    this.prefix = options.prefix ?? 'rl:';
+    this.prefix = options.prefix ?? 'lb:';
   }
 
   private prefixKey(key: string): string {
     return `${this.prefix}${key}`;
   }
 
-  async get(key: string): Promise<number | null> {
+  // Get method for retrieving multiple fields from the Redis hash
+async get(key: string): Promise<{ tokens: number; lastRefill: number } | null> {
     const redisKey = this.prefixKey(key);
+    
     try {
       console.log('Fetching key:', redisKey);
-      const totalHits = await this.client.get(redisKey);
-      return totalHits ? parseInt(totalHits, 10) : null;
+      const data = await this.client.hgetall(redisKey); // Use hgetall to fetch all fields of the hash
+      console.log('Fetched data:', data);
+      
+      if (data && data.tokens && data.lastRefill) {
+        // Parse values and return as an object
+        return {
+          tokens: parseInt(data.tokens, 10),
+          lastRefill: parseInt(data.lastRefill, 10),
+        };
+      }
+      
+      return null; // Return null if no data is found
     } catch (error) {
       console.error(`Error fetching key ${redisKey}:`, error);
       throw error;
     }
   }
-
+  
+  // Set method for storing multiple fields in Redis
   async set(key: string, data: { tokens: number; lastRefill: number }): Promise<void> {
     const redisKey = this.prefixKey(key);
+    
     try {
       console.log('Setting key:', redisKey, 'with data:', data);
       await this.client.hmset(redisKey, {
@@ -61,6 +75,7 @@ export default class LeakyBucketRedisStore implements Store {
       throw error;
     }
   }
+  
 
   async increment(key: string): Promise<number> {
     const redisKey = this.prefixKey(key);
