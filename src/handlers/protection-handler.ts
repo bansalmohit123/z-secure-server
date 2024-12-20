@@ -38,8 +38,8 @@ interface TokenBucketRule {
   interface LeakyBucketRule {
     mode: "LIVE" | "DRY_RUN";
     leakRate: number;
+    timeout: number;
     capacity: number;
-    timeout : number;
   }
   
   interface SlidingWindowRule {
@@ -56,28 +56,36 @@ interface TokenBucketRule {
     threshold: number;
   }
   
-  // Create a union type for the different rate-limiting algorithms
-  type RateLimitingAlgorithm =
-    | { algorithm: "TokenBucketRule"; rules: TokenBucketRule }
-    | { algorithm: "FixedWindowRule"; rules: FixedWindowRule }
-    | { algorithm: "LeakyBucketRule"; rules: LeakyBucketRule }
-    | { algorithm: "SlidingWindowRule"; rules: SlidingWindowRule };
+  // Unified RateLimitingRule type
+  type RateLimitingRule =
+    | (TokenBucketRule & { algorithm: "TokenBucketRule" })
+    | (FixedWindowRule & { algorithm: "FixedWindowRule" })
+    | (LeakyBucketRule & { algorithm: "LeakyBucketRule" })
+    | (SlidingWindowRule & { algorithm: "SlidingWindowRule" });
   
+  // Main options interface
+  interface zsecureOptions {
+    API_KEY: string;
+    baseUrl?: string;
+    logging?: boolean;
+    rateLimitingRule?: RateLimitingRule; // Rate limiting rule (optional)
+    shieldRule?: ShieldRule;            // Shield rule (optional)
+  }
 
 
-interface Payload {
-    key: string;
-    identificationKey: string;
-    userId : string;
-    rateLimiting?: {
-        rule: RateLimitingAlgorithm;
-        requested: number;
-    };
-    shield?: {
-        rule: ShieldRule;
-        request: Request;
-    };
-}
+// interface Payload {
+//     key: string;
+//     identificationKey: string;
+//     userId : string;
+//     rateLimiting?: {
+//         rules: RateLimitingAlgorithm;
+//         requested: number;
+//     };
+//     shield?: {
+//         rule: ShieldRule;
+//         request: Request;
+//     };
+// }
 
 // payload api will be reveiving
 
@@ -91,9 +99,10 @@ export const ProtectionHandler = async (
     req: Request,
     res: Response
 ): Promise<Response> => {
-    const { key, identificationKey, rateLimiting, shield, userId } = req.body as unknown as Payload;
-
-    console.log('Received request:', { key, identificationKey, rateLimiting, shield });
+    const { key, identificationKey, rateLimiting, shield, userId } = req.body;
+    console.log('Received request:', { key, identificationKey, rateLimiting, shield, userId });
+    
+    console.log("Request received")
 
     if (!key || !identificationKey) {
         return res.status(400).json({ message: 'Missing required parameters' });
@@ -107,6 +116,9 @@ export const ProtectionHandler = async (
         // console.log('Fetched API key from Redis:', apiKey);
 
         if (!apiKey) {
+            if(!prisma.$connect){
+                await prisma.$connect();
+            }
             const apiKeyFromDB = await prisma.apiKey.findUnique({
                 where: { key: key },
                 include: { user: true },
@@ -117,17 +129,23 @@ export const ProtectionHandler = async (
                 return res.status(400).json({ message: 'Invalid API Key' });
             }
 
-            await redis.set(`api_key:${key}`, JSON.stringify(apiKeyFromDB), 'EX', 3600);
-            apiKey = JSON.stringify(apiKeyFromDB);
-            console.log('Stored API key in Redis:', apiKey);
+            await redis.set(`api_key:${key}`, JSON.stringify(apiKeyFromDB.user.id), 'EX', 3600, (err, reply) => {
+                if (err) {
+                    console.log('Error setting API key in Redis:', err);
+                } else {
+                    console.log('API key set in Redis:', reply);
+                }
+            });
+            
         }
+        console.log('API Key:', apiKey);
+        console.log(rateLimiting);
         let result = true;
         let shield_result = true;
         if(rateLimiting){
-            const { rule, requested } = rateLimiting;
-            const { algorithm, rules } = rule;
-            if (algorithm === 'TokenBucketRule') {
-                const { refillRate, interval, capacity } = rules;
+
+            if (rateLimiting.algorithm === 'TokenBucketRule') {
+                const { refillRate, interval, capacity } = rateLimiting;
                 result = await tokenBucket({
                     user_ID: userId,
                     refillRate,
@@ -137,9 +155,10 @@ export const ProtectionHandler = async (
                     identificationKey
                 });
                 
-            } else if (algorithm === 'FixedWindowRule') {
-                const { algorithm, rules } = rule;
-                const { windowMs, limit } = rules;
+            } else if (rateLimiting.algorithm === 'FixedWindowRule') {
+                console.log(rateLimiting.rule)
+                const { windowMs, limit } = rateLimiting.rule;
+                console.log('FixedWindowRule:', windowMs, limit);
                 result = await fixedWindow({
                     user_ID: userId,
                     limit,
@@ -148,8 +167,8 @@ export const ProtectionHandler = async (
                     store: FixedWindowRedis,
                     identificationKey
                 });
-            } else if (algorithm === 'LeakyBucketRule') {
-                const { leakRate, capacity, timeout } = rules;
+            } else if (rateLimiting.algorithm === 'LeakyBucketRule') {
+                const { leakRate, capacity, timeout } = rateLimiting.rule;
                 // console.log('LeakyBucketRule:', leakRate, capacity, timeout);
                 result = await leakyBucket({
                     user_ID: userId,
@@ -160,14 +179,13 @@ export const ProtectionHandler = async (
                     identificationKey,
                     store : LeakyBucketRedis,
                 });
-            } else if (algorithm === 'SlidingWindowRule') {
-                const { windowMs, limit } = rules;
+            } else if (rateLimiting.algorithm === 'SlidingWindowRule') {
+                const { windowMs, limit } = rateLimiting.rule;
                 result = true;
             }
         }
         if(shield){
-            const { rule, request } = shield;
-            const { windowMs, limit, threshold } = rule;
+            const { windowMs, limit, threshold, request } = shield;
             console.log(request)
             shield_result = await Protect({
                 req : request,
@@ -178,6 +196,7 @@ export const ProtectionHandler = async (
                 store: ShieldRedis,
                 identificationKey
             });
+            console.log(shield_result)
         }
         if(result && shield_result){
             return res.status(200).json({ message: 'Request allowed', isdenied : false });

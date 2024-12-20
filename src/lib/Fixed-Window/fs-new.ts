@@ -25,7 +25,7 @@ interface FixedWindow {
 async function fixedWindow({ user_ID, limit, windowMs, API_KEY, store, identificationKey }: FixedWindow): Promise<boolean> {
   try {
     const redisKey = `${API_KEY}.${identificationKey}.${user_ID}`;
-    const ttl = Math.ceil(windowMs); // TTL in seconds
+    const ttl = windowMs; // TTL in seconds
 
     console.log('Fixed window rate limiting:', { redisKey, ttl });
     const beforeHits = await store.get(redisKey);
@@ -36,6 +36,8 @@ async function fixedWindow({ user_ID, limit, windowMs, API_KEY, store, identific
     console.log('Current hits:', currentHits);
 
     if (currentHits === 1) {
+      console.log('First hit for key:', redisKey);
+      console.log('Setting expiry for key:', redisKey, 'with TTL:', ttl);
       // Set expiration only when key is first created
       await store.setExpiry(redisKey, ttl);
       console.log('Set expiry for key:', redisKey, 'with TTL:', ttl);

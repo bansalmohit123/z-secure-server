@@ -25,54 +25,61 @@ interface ShieldWindow {
 }
 
 
-export function isAttackDetected(
-  input: object,
-  patterns: RegExp[]
-): boolean {
-  console.log("isAttackDetected")
-  console.log(input)
-  function scanValues(values: any[]): boolean {
-      return values.some(value => {
-          if (typeof value === 'string') {
-              return patterns.some(pattern => pattern.test(value));
-          } else if (typeof value === 'object' && value !== null) {
-              // Recursively check nested objects or arrays
-              return isAttackDetected(value, patterns);
-          } else {
-              return false;
-          }
-      });
-  }
-
-  return scanValues(Object.values(input));
-}
-
-
 export function detectMaliciousRequest(
   req: any,
 ): { isSuspicious: boolean; attackTypes: string[] } {
   const attackTypes: string[] = [];
+  const patterns = [
+    { name: "XSS", patterns: detectXSSPatterns },
+    { name: "SQL Injection", patterns: detectSQLInjectionPatterns },
+    { name: "LFI", patterns: detectLfiPatterns }
+  ];
+  const {body, params ,query} = req;
 
   // Check enabled attack detection options
-  console.log(req.body)
-    console.log(req.query)
-    console.log(req.params)
-  console.log("+++++++++++")
-  if (isAttackDetected({ ...req.query, ...req.body, ...req.params }, detectXSSPatterns)) {
-      attackTypes.push("XSS");
-  }
-  if (isAttackDetected({ ...req.query, ...req.body, ...req.params }, detectSQLInjectionPatterns)) {
-      console.log("SQL Injection detected")
-      attackTypes.push("SQL Injection");
-  }
-  if (isAttackDetected({ ...req.query, ...req.body, ...req.params }, detectLfiPatterns)) {
-      attackTypes.push("LFI");
-  }
+  console.log(req.body);
+  console.log(req.query);
+  console.log(req.params);
+  console.log("+++++++++++");
+
+  const parts = [{ query }, { body }, { params }];
+
+  parts.forEach(part => {
+    patterns.forEach(({ name, patterns }) => {
+      if (isAttackDetected(part, patterns)) {
+        console.log(`${name} detected`);
+        attackTypes.push(name);
+      }
+    });
+  });
+
+  console.log("Attack types:", attackTypes);
 
   return {
-      isSuspicious: attackTypes.length > 0,
-      attackTypes,
+    isSuspicious: attackTypes.length > 0,
+    attackTypes,
   };
+}
+
+function isAttackDetected(
+  input: object,
+  patterns: RegExp[]
+): boolean {
+  console.log(input);
+  function scanValues(values: any[]): boolean {
+    return values.some(value => {
+      if (typeof value === 'string') {
+        return patterns.some(pattern => pattern.test(value));
+      } else if (typeof value === 'object' && value !== null) {
+        // Recursively check nested objects or arrays
+        return isAttackDetected(value, patterns);
+      } else {
+        return false;
+      }
+    });
+  }
+
+  return scanValues(Object.values(input));
 }
 
 
@@ -91,13 +98,19 @@ try {
       params: req.params,
   });
   if (isSuspicious) {
-      console.log("Malicious request detected:", { attackTypes });
-      const currentHits = await store.increment(key);
-      if(currentHits > limit){
-        return false;
+      // console.log("Malicious request detected:", { attackTypes });
+      try {
+        const currentHits = await store.increment(key);
+        if(currentHits > limit){
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error("Error incrementing hits in shieldRateLimiter:", error);
+        return false; // Fail-safe: Deny request on error
       }
-      return true;
   }
+  console.log("Rate limit not exceeded for key:", key);
   return true;
 } catch (error) {
   console.error("Error in shieldRateLimiter:", error);
