@@ -113,7 +113,7 @@ export const ProtectionHandler = async (
         //if not found then check in db
         //  if not found then return invalid api key
         let apiKey = await redis.get(`api_key:${key}`);
-        // console.log('Fetched API key from Redis:', apiKey);
+         console.log('Fetched API key from Redis:', apiKey);
 
         if (!apiKey) {
             if(!prisma.$connect){
@@ -128,7 +128,7 @@ export const ProtectionHandler = async (
                 console.log('Invalid API Key');
                 return res.status(400).json({ message: 'Invalid API Key' });
             }
-
+            console.log("dhzvbfj");
             await redis.set(`api_key:${key}`, JSON.stringify(apiKeyFromDB.user.id), 'EX', 3600, (err, reply) => {
                 if (err) {
                     console.log('Error setting API key in Redis:', err);
@@ -138,14 +138,16 @@ export const ProtectionHandler = async (
             });
             
         }
-        console.log('API Key:', apiKey);
+        console.log('API KEY:', apiKey);
         console.log(rateLimiting);
+        // console.log(rateLimiting.rule.algorithm);
         let result = true;
         let shield_result = true;
         if(rateLimiting){
 
             if (rateLimiting.algorithm === 'TokenBucketRule') {
-                const { refillRate, interval, capacity } = rateLimiting;
+               
+                const { refillRate, interval, capacity } = rateLimiting.rule;
                 result = await tokenBucket({
                     user_ID: userId,
                     refillRate,
@@ -156,6 +158,7 @@ export const ProtectionHandler = async (
                 });
                 
             } else if (rateLimiting.algorithm === 'FixedWindowRule') {
+                
                 console.log(rateLimiting.rule)
                 const { windowMs, limit } = rateLimiting.rule;
                 console.log('FixedWindowRule:', windowMs, limit);
@@ -168,8 +171,9 @@ export const ProtectionHandler = async (
                     identificationKey
                 });
             } else if (rateLimiting.algorithm === 'LeakyBucketRule') {
+               
                 const { leakRate, capacity, timeout } = rateLimiting.rule;
-                // console.log('LeakyBucketRule:', leakRate, capacity, timeout);
+                 console.log('LeakyBucketRule:', leakRate, capacity, timeout);
                 result = await leakyBucket({
                     user_ID: userId,
                     capacity,
