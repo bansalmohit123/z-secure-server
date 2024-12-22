@@ -145,7 +145,7 @@ export const ProtectionHandler = async (
         let shield_result = true;
         if(rateLimiting){
 
-            if (rateLimiting.algorithm === 'TokenBucketRule') {
+            if (rateLimiting.rule.algorithm === 'TokenBucketRule') {
                
                 const { refillRate, interval, capacity } = rateLimiting.rule;
                 result = await tokenBucket({
@@ -157,7 +157,7 @@ export const ProtectionHandler = async (
                     identificationKey
                 });
                 
-            } else if (rateLimiting.algorithm === 'FixedWindowRule') {
+            } else if (rateLimiting.rule.algorithm === 'FixedWindowRule') {
                 
                 console.log(rateLimiting.rule)
                 const { windowMs, limit } = rateLimiting.rule;
@@ -170,7 +170,7 @@ export const ProtectionHandler = async (
                     store: FixedWindowRedis,
                     identificationKey
                 });
-            } else if (rateLimiting.algorithm === 'LeakyBucketRule') {
+            } else if (rateLimiting.rule.algorithm === 'LeakyBucketRule') {
                
                 const { leakRate, capacity, timeout } = rateLimiting.rule;
                  console.log('LeakyBucketRule:', leakRate, capacity, timeout);
@@ -183,7 +183,7 @@ export const ProtectionHandler = async (
                     identificationKey,
                     store : LeakyBucketRedis,
                 });
-            } else if (rateLimiting.algorithm === 'SlidingWindowRule') {
+            } else if (rateLimiting.rule.algorithm === 'SlidingWindowRule') {
                 const { windowMs, limit } = rateLimiting.rule;
                 result = true;
             }
